@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	appsv1 "k8s.io/api/apps/v1"
+	"golang.org/x/exp/rand"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -33,7 +34,7 @@ type mysql struct {
 
 func New(cliSet *kubernetes.Clientset, opts *Options) *mysql {
 	defaultOpts := Options{
-		Replicas:      3,
+		Replicas:      1,
 		CPURequest:    "1",
 		MemoryRequest: "1Gi",
 		CPULimit:      "1",
@@ -67,7 +68,7 @@ func New(cliSet *kubernetes.Clientset, opts *Options) *mysql {
 		namespace: "default",
 		name:      "mysql",
 		replicas:  opts.Replicas,
-		image:     "mysql",
+		image:     "mysql:8.0",
 		port:      3306,
 		resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
@@ -85,11 +86,15 @@ func New(cliSet *kubernetes.Clientset, opts *Options) *mysql {
 func (m *mysql) Deploy() error {
 	ctx := context.Background()
 
-	if err := m.configMap(ctx); err != nil {
+	if err := m.secret(ctx); err != nil {
 		return err
 	}
 
-	if err := m.statefulSet(ctx); err != nil {
+	if err := m.pvc(ctx); err != nil {
+		return err
+	}
+
+	if err := m.deployment(ctx); err != nil {
 		return err
 	}
 
@@ -99,26 +104,36 @@ func (m *mysql) Deploy() error {
 	return nil
 }
 
-func (m *mysql) configMap(ctx context.Context) error {
-	cmCli := m.cliSet.CoreV1().ConfigMaps(m.namespace)
+func generatePassword(length int) []byte {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	pass := make([]byte, length)
+	for i := range pass {
+		pass[i] = charset[rand.Intn(len(charset))]
+	}
+	return pass
+}
 
-	primaryConfig := "[mysqld]\nlog-bin"
-	replicaConfig := "[mysqld]\nsuper-read-only"
-	cm := &corev1.ConfigMap{
+func (m *mysql) secret(ctx context.Context) error {
+	scrtCli := m.cliSet.CoreV1().Secrets(m.namespace)
+
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.name,
+			Name:      fmt.Sprintf("%s-creds", m.name),
 			Namespace: m.namespace,
+			Labels: map[string]string{
+				"app": m.name,
+			},
 		},
-		Data: map[string]string{
-			"primary.cnf": primaryConfig,
-			"replica.cnf": replicaConfig,
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"password": generatePassword(25),
 		},
 	}
 
-	_, err := cmCli.Create(ctx, cm, metav1.CreateOptions{})
+	_, err := scrtCli.Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			cmCli.Update(ctx, cm, metav1.UpdateOptions{})
+			scrtCli.Update(ctx, secret, metav1.UpdateOptions{})
 			return nil
 		}
 		return err
@@ -129,7 +144,7 @@ func (m *mysql) configMap(ctx context.Context) error {
 func (m *mysql) service(ctx context.Context) error {
 	svcCli := m.cliSet.CoreV1().Services(m.namespace)
 
-	headless := &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.name,
 			Namespace: m.namespace,
@@ -140,7 +155,8 @@ func (m *mysql) service(ctx context.Context) error {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"app": m.name,
+				"app":  m.name,
+				"tier": m.name,
 			},
 			ClusterIP: "None",
 			Ports: []corev1.ServicePort{
@@ -153,72 +169,80 @@ func (m *mysql) service(ctx context.Context) error {
 		},
 	}
 
-	readOnly := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-read", m.name),
-			Namespace: m.namespace,
-			Labels: map[string]string{
-				"app":                    m.name,
-				"app.kubernetes.io/name": m.name,
-				"readonly":               "true",
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"app": m.name,
-			},
-			Ports: []corev1.ServicePort{
-				{
-					Name:     m.name,
-					Protocol: corev1.ProtocolTCP,
-					Port:     m.port,
-				},
-			},
-		},
-	}
-
-	services := []*corev1.Service{
-		headless,
-		readOnly,
-	}
-
-	for _, svc := range services {
-		_, err := svcCli.Create(ctx, svc, metav1.CreateOptions{})
-		if err != nil {
-			if apierrors.IsAlreadyExists(err) {
-				svcCli.Update(ctx, svc, metav1.UpdateOptions{})
-				return nil
-			}
-			return err
+	_, err := svcCli.Create(ctx, svc, metav1.CreateOptions{})
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			svcCli.Update(ctx, svc, metav1.UpdateOptions{})
+			return nil
 		}
+		return err
 	}
 
 	return nil
 }
 
-func (m *mysql) statefulSet(ctx context.Context) error {
-	ssCli := m.cliSet.AppsV1().StatefulSets(m.namespace)
+func (m *mysql) pvc(ctx context.Context) error {
+	pvcCli := m.cliSet.CoreV1().PersistentVolumeClaims(m.namespace)
 
-	statefulSet := &appsv1.StatefulSet{
+	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.name,
 			Namespace: m.namespace,
+			Labels: map[string]string{
+				"app": m.name,
+			},
 		},
-
-		Spec: appsv1.StatefulSetSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app":                    m.name,
-					"app.kubernetes.io/name": m.name,
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("5Gi"),
 				},
 			},
-			ServiceName: m.name,
-			Replicas:    &m.replicas,
+		},
+	}
+
+	_, err := pvcCli.Create(ctx, pvc, metav1.CreateOptions{})
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			pvcCli.Update(ctx, pvc, metav1.UpdateOptions{})
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *mysql) deployment(ctx context.Context) error {
+	dCli := m.cliSet.AppsV1().Deployments(m.namespace)
+
+	deployment := &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.name,
+			Namespace: m.namespace,
+			Labels: map[string]string{
+				"app": m.name,
+			},
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &m.replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app":  m.name,
+					"tier": m.name,
+				},
+			},
+			Strategy: v1.DeploymentStrategy{
+				Type: v1.RecreateDeploymentStrategyType,
+			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app":                    m.name,
-						"app.kubernetes.io/name": m.name,
+						"app":  m.name,
+						"tier": m.name,
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -228,93 +252,58 @@ func (m *mysql) statefulSet(ctx context.Context) error {
 							Image: m.image,
 							Env: []corev1.EnvVar{
 								{
-									Name:  "MYSQL_ALLOW_EMPTY_PASSWORD",
-									Value: "1",
+									Name: "MYSQL_ROOT_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: fmt.Sprintf("%s-creds", m.name),
+											},
+											Key: "password",
+										},
+									},
+								},
+								{
+									Name:  "MYSQL_DATABASE",
+									Value: "wordpress",
+								},
+								{
+									Name:  "MYSQL_USER",
+									Value: "wordpress",
+								},
+								{
+									Name: "MYSQL_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: fmt.Sprintf("%s-creds", m.name),
+											},
+											Key: "password",
+										},
+									},
 								},
 							},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          m.name,
-									ContainerPort: m.port,
 									Protocol:      corev1.ProtocolTCP,
+									ContainerPort: m.port,
 								},
-							},
-							Resources: m.resources,
-							LivenessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									Exec: &corev1.ExecAction{
-										Command: []string{
-											"mysqladmin",
-											"ping",
-										},
-									},
-								},
-								InitialDelaySeconds: 5,
-								PeriodSeconds:       2,
-								TimeoutSeconds:      1,
-							},
-							ReadinessProbe: &corev1.Probe{
-								ProbeHandler: corev1.ProbeHandler{
-									Exec: &corev1.ExecAction{
-										Command: []string{
-											"mysqladmin",
-											"-h",
-											"127.0.0.1",
-											"-e",
-											"SELECT 1",
-										},
-									},
-								},
-								InitialDelaySeconds: 5,
-								PeriodSeconds:       2,
-								TimeoutSeconds:      1,
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "data",
+									Name:      fmt.Sprintf("%-storage", m.name),
 									MountPath: "/var/lib/mysql",
-									SubPath:   m.name,
-								},
-								{
-									Name:      "conf",
-									MountPath: "/etc/mysql/conf.d",
-									SubPath:   m.name,
 								},
 							},
 						},
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "conf",
+							Name: fmt.Sprintf("%-storage", m.name),
 							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-						{
-							Name: "config-map",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: m.name,
-									},
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: m.name,
 								},
-							},
-						},
-					},
-				},
-			},
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "data",
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{
-							corev1.ReadWriteOnce,
-						},
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse("10Gi"),
 							},
 						},
 					},
@@ -323,10 +312,10 @@ func (m *mysql) statefulSet(ctx context.Context) error {
 		},
 	}
 
-	_, err := ssCli.Create(ctx, statefulSet, metav1.CreateOptions{})
+	_, err := dCli.Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			ssCli.Update(ctx, statefulSet, metav1.UpdateOptions{})
+			dCli.Update(ctx, deployment, metav1.UpdateOptions{})
 			return nil
 		}
 		return err
@@ -334,4 +323,5 @@ func (m *mysql) statefulSet(ctx context.Context) error {
 	}
 
 	return nil
+
 }

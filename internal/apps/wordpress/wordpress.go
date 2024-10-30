@@ -216,7 +216,7 @@ func (w *wordpress) deployment(ctx context.Context) error {
 							Env: []corev1.EnvVar{
 								{
 									Name:  "WORDPRESS_DB_HOST",
-									Value: "1",
+									Value: "mysql.default.svc.clustser.local",
 								},
 								{
 									Name:  "WORDPRESS_DB_USER",
@@ -227,7 +227,7 @@ func (w *wordpress) deployment(ctx context.Context) error {
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "wordpress-db-secret",
+												Name: "mysql-creds",
 											},
 											Key: "password",
 										},
