@@ -216,7 +216,7 @@ func (w *wordpress) deployment(ctx context.Context) error {
 							Env: []corev1.EnvVar{
 								{
 									Name:  "WORDPRESS_DB_HOST",
-									Value: "mysql.default.svc.clustser.local",
+									Value: "mysql",
 								},
 								{
 									Name:  "WORDPRESS_DB_USER",
