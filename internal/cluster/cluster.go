@@ -3,6 +3,7 @@ package cluster
 import (
 	"bufio"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -95,6 +96,27 @@ func parseK3dOutput(line string) string {
 	return line
 }
 
+// clusterExists checks if a k3d cluster exists
+func clusterExists(bin, clusterName string) (bool, error) {
+	cmd := exec.Command(bin, "cluster", "list", "-o", "json")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+
+	var clusters []struct{ Name string }
+	if err := json.Unmarshal(output, &clusters); err != nil {
+		return false, err
+	}
+
+	for _, c := range clusters {
+		if c.Name == clusterName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // create creates a k3d cluster
 func Create(msgChan chan<- string) error {
 	k3d, err := getK3d()
@@ -103,6 +125,13 @@ func Create(msgChan chan<- string) error {
 	}
 	defer os.Remove(k3d.bin.Name())
 	msgChan <- fmt.Sprintf("Detected OS: %s, ARCH: %s", k3d.os, k3d.arch)
+
+	if exists, err := clusterExists(k3d.bin.Name(), "k3s-default"); err != nil {
+		return err
+	} else if exists {
+		msgChan <- "cluster already exists, skipping creation"
+		return nil
+	}
 
 	command := exec.Command(k3d.bin.Name(), "cluster", "create")
 	stdout, err := command.StdoutPipe()
