@@ -282,6 +282,7 @@ func (m *mysql) deployment(ctx context.Context) error {
 									},
 								},
 							},
+							Resources: m.resources,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          m.name,

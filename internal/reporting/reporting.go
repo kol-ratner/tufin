@@ -39,19 +39,16 @@ func Status(msgChan chan<- string) error {
 	t.AppendHeader(table.Row{"NAME", "READY", "STATUS", "RESTARTS", "START_TIME", "CPU_USAGE", "MEMORY_USAGE"})
 
 	for _, pod := range pods.Items {
-		cpuLimit := pod.Spec.Containers[0].Resources.Limits.Cpu()
-		memLimit := pod.Spec.Containers[0].Resources.Limits.Memory()
-
-		fmt.Println(cpuLimit)
-		fmt.Println(memLimit)
+		cpuReq := pod.Spec.Containers[0].Resources.Requests.Cpu()
+		memoryReq := pod.Spec.Containers[0].Resources.Requests.Memory()
 
 		metrics, err := metricsClientSet.MetricsV1beta1().PodMetricses("default").Get(context.Background(), pod.Name, metav1.GetOptions{})
 		if err != nil {
 			continue
 		}
 
-		cpuUsage := calculateResourcePercentage(metrics.Containers[0].Usage.Cpu(), cpuLimit)
-		memUsage := calculateResourcePercentage(metrics.Containers[0].Usage.Memory(), memLimit)
+		cpuUsage := calcUtil(metrics.Containers[0].Usage.Cpu(), cpuReq)
+		memUsage := calcUtil(metrics.Containers[0].Usage.Memory(), memoryReq)
 
 		t.AppendRow(table.Row{
 			pod.Name,
@@ -66,14 +63,13 @@ func Status(msgChan chan<- string) error {
 	}
 
 	t.Render()
-
 	return nil
 }
 
-func calculateResourcePercentage(usage, limit *resource.Quantity) string {
-	if limit.IsZero() {
-		return "No Limit"
+func calcUtil(usage, request *resource.Quantity) string {
+	if request.IsZero() {
+		return "no resource request configured"
 	}
-	percentage := float64(usage.MilliValue()) / float64(limit.MilliValue()) * 100
+	percentage := float64(usage.MilliValue()) / float64(request.MilliValue()) * 100
 	return fmt.Sprintf("%.1f%%", percentage)
 }

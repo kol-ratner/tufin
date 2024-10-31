@@ -21,7 +21,7 @@ func Deploy(msgChan chan<- string) error {
 
 	mysql := mysql.New(clientSet, &mysql.Options{
 		CPURequest:    "500m",
-		MemoryRequest: "512Mi",
+		MemoryRequest: "750Mi",
 	})
 	if err := mysql.Deploy(); err != nil {
 		return err

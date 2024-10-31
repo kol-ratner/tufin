@@ -234,6 +234,7 @@ func (w *wordpress) deployment(ctx context.Context) error {
 									},
 								},
 							},
+							Resources: w.resources,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          w.name,
