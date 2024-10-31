@@ -1,12 +1,12 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2024 Kol Ratner kolratner@gmail.com
 */
 package cmd
 
 import (
-	"fmt"
+	"log"
 
+	"github.com/kol-ratner/tufin/internal/reporting"
 	"github.com/spf13/cobra"
 )
 
@@ -20,21 +20,33 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("status called")
-	},
+	Run: statusEntrypoint,
 }
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func statusEntrypoint(cmd *cobra.Command, args []string) {
+	msgs := make(chan string)
+	// the done channel signals to the main goroutine that the cluster.Create() function has completed
+	// otherwise our program will continue trying to process messages from the cluster.Create() function and panic
+	done := make(chan bool)
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// statusCmd.PersistentFlags().String("foo", "", "A help for foo")
+	go func() {
+		if err := reporting.Status(msgs); err != nil {
+			log.Println(err)
+		}
+		done <- true
+	}()
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// statusCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	for {
+		select {
+		case msg := <-msgs:
+			log.Println(msg)
+		case <-done:
+			close(msgs)
+			return
+		}
+	}
 }
