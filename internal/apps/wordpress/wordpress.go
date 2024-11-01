@@ -35,11 +35,11 @@ type wordpress struct {
 func New(cliSet *kubernetes.Clientset, opts *Options) *wordpress {
 	defaultOpts := Options{
 		Replicas:      1,
-		CPURequest:    "500m",
-		MemoryRequest: "512Mi",
-		CPULimit:      "1",
-		MemoryLimit:   "1Gi",
-		WWWVolumeSize: "5Gi",
+		CPURequest:    "250m",
+		MemoryRequest: "256Mi",
+		CPULimit:      "500m",
+		MemoryLimit:   "512Mi",
+		WWWVolumeSize: "2Gi",
 	}
 
 	if opts == nil {
