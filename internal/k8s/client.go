@@ -3,8 +3,29 @@ package k8s
 import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-func NewClient(config *rest.Config) (*kubernetes.Clientset, error) {
-	return kubernetes.NewForConfig(config)
+type client struct {
+	ClientSet        *kubernetes.Clientset
+	MetricsClientSet *metrics.Clientset
+}
+
+func NewClient(config *rest.Config) (*client, error) {
+	client := &client{}
+
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	client.ClientSet = clientSet
+
+	metricsClientSet, err := metrics.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	client.MetricsClientSet = metricsClientSet
+
+	return client, nil
 }
