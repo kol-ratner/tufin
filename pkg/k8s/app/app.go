@@ -17,7 +17,7 @@ const (
 )
 
 type Application struct {
-	Client    *kubernetes.Clientset
+	Client    kubernetes.Interface
 	Config    *ApplicationConfig
 	Resources []KubernetesResource
 }

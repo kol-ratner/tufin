@@ -69,7 +69,7 @@ func deployEntrypoint(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	componentOpts, err := parseSetFlag(setValue)
+	componentOpts, err := ParseSetFlag(setValue)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func deployEntrypoint(cmd *cobra.Command, args []string) {
 	}
 }
 
-func parseSetFlag(setValue string) (map[string][]config.Option, error) {
+func ParseSetFlag(setValue string) (map[string][]config.Option, error) {
 	componentOpts := make(map[string][]config.Option)
 	pairs := strings.Split(setValue, ",")
 
