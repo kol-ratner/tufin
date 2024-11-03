@@ -13,13 +13,15 @@ import (
 // clusterCmd represents the cluster command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Manage Kubernetes cluster configuration and resources",
+	Long: `The cluster command provides tools for managing your Kubernetes cluster setup.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Key Features:
+  - Create a new Kubernetes cluster
+
+Examples:
+  # Create a new Kubernetes cluster
+  tufin cluster`,
 	Run: clusterEntrypoint,
 }
 
