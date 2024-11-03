@@ -9,7 +9,7 @@ import (
 	k8sapp "github.com/kol-ratner/tufin/pkg/k8s/app"
 )
 
-func New(cliSet *kubernetes.Clientset, opts ...config.Option) k8sapp.Application {
+func New(cliSet kubernetes.Interface, opts ...config.Option) k8sapp.Application {
 
 	cfg := newConfig(opts...)
 

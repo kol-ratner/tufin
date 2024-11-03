@@ -13,6 +13,7 @@ import (
 
 	"github.com/kol-ratner/tufin/internal/config"
 	"github.com/kol-ratner/tufin/internal/deployments"
+	"github.com/kol-ratner/tufin/pkg/k8s"
 )
 
 // deployCmd represents the deploy command
@@ -84,12 +85,23 @@ func deployEntrypoint(cmd *cobra.Command, args []string) {
 	}
 
 	msgs := make(chan string)
+	kubeConfig, err := k8s.GetKubeConfigFromHost("")
+	if err != nil {
+		log.Fatal(err)
+	}
+	msgs <- "found kubeconfig!"
+
+	cli, err := k8s.NewClient(kubeConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// the done channel signals to the main goroutine that the apps.Deploy() function has completed
 	// otherwise our program will continue trying to process messages from the apps.Deploy() function and panic
 	done := make(chan bool)
 
 	go func() {
-		if err := deployments.Ship(msgs, configs...); err != nil {
+		if err := deployments.Ship(msgs, "", cli, configs...); err != nil {
 			log.Println(err)
 		}
 		done <- true
