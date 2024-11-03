@@ -11,7 +11,7 @@ import (
 
 func TestShip(t *testing.T) {
 	// Create a temporary kubeconfig file for testing
-	tmpKubeconfig, err := os.CreateTemp("", "kubeconfig")
+	tmpKubeconfig, err := os.CreateTemp(".kube", "config")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,23 +19,23 @@ func TestShip(t *testing.T) {
 
 	// Write mock kubeconfig content
 	mockConfig := `
-apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: https://localhost:6443
-  name: test-cluster
-contexts:
-- context:
-    cluster: test-cluster
-    user: test-user
-  name: test-context
-current-context: test-context
-users:
-- name: test-user
-  user:
-    token: test-token
-`
+	apiVersion: v1
+	kind: Config
+	clusters:
+	- cluster:
+	    server: https://localhost:6443
+	  name: test-cluster
+	contexts:
+	- context:
+	    cluster: test-cluster
+	    user: test-user
+	  name: test-context
+	current-context: test-context
+	users:
+	- name: test-user
+	  user:
+	    token: test-token
+	`
 	if _, err := tmpKubeconfig.Write([]byte(mockConfig)); err != nil {
 		t.Fatal(err)
 	}
