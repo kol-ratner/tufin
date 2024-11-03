@@ -5,7 +5,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/kol-ratner/tufin/internal/k8s"
+	"github.com/kol-ratner/tufin/pkg/k8s"
 )
 
 func Status(msgChan chan<- string) error {

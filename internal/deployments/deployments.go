@@ -4,8 +4,8 @@ import (
 	"github.com/kol-ratner/tufin/internal/deployments/mysql"
 	"github.com/kol-ratner/tufin/internal/deployments/wordpress"
 
-	// "github.com/kol-ratner/tufin/internal/deployments/wordpress"
-	"github.com/kol-ratner/tufin/internal/k8s"
+	"github.com/kol-ratner/tufin/internal/config"
+	"github.com/kol-ratner/tufin/pkg/k8s"
 )
 
 func Ship(msgChan chan<- string) error {
@@ -23,8 +23,8 @@ func Ship(msgChan chan<- string) error {
 
 	mysql := mysql.New(
 		cli.ClientSet,
-		mysql.WithCPURequest("250m"),
-		mysql.WithMemoryRequest("250Mi"),
+		config.WithCPURequest("250m"),
+		config.WithMemoryRequest("250Mi"),
 	)
 	if err := mysql.Deploy(); err != nil {
 		return err
