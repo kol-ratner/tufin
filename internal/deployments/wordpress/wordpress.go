@@ -1,6 +1,8 @@
 package wordpress
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/kubernetes"
@@ -111,6 +113,7 @@ func newConfig(opts ...config.Option) *k8sapp.ApplicationConfig {
 
 	// Apply overrides to the config
 	if overrides.Replicas != 0 {
+		fmt.Println("overrides.Replicas", overrides.Replicas)
 		cfg.Deployment.Replicas = overrides.Replicas
 	}
 	if overrides.CPURequest != "" {
@@ -126,6 +129,7 @@ func newConfig(opts ...config.Option) *k8sapp.ApplicationConfig {
 		cfg.Deployment.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(overrides.MemoryLimit)
 	}
 	if overrides.VolumeSize != "" {
+		fmt.Println("overrides.VolumeSize", overrides.VolumeSize)
 		cfg.Pvc.Size = overrides.VolumeSize
 	}
 
