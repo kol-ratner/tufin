@@ -1,6 +1,7 @@
 package deployments_test
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -9,6 +10,41 @@ import (
 )
 
 func TestShip(t *testing.T) {
+	// Create a temporary kubeconfig file for testing
+	tmpKubeconfig, err := os.CreateTemp("", "kubeconfig")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpKubeconfig.Name())
+
+	// Write mock kubeconfig content
+	mockConfig := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://localhost:6443
+  name: test-cluster
+contexts:
+- context:
+    cluster: test-cluster
+    user: test-user
+  name: test-context
+current-context: test-context
+users:
+- name: test-user
+  user:
+    token: test-token
+`
+	if _, err := tmpKubeconfig.Write([]byte(mockConfig)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set KUBECONFIG environment variable
+	os.Setenv("KUBECONFIG", tmpKubeconfig.Name())
+	defer os.Unsetenv("KUBECONFIG")
+
+	// Rest of your test cases remain the same
 	tests := []struct {
 		name      string
 		configs   []deployments.DeploymentConfig
