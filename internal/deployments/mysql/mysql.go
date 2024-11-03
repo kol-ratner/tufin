@@ -5,6 +5,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+type Option func(*ConfigOverrides)
+
 func New(cliSet *kubernetes.Clientset, opts ...Option) k8sapp.Application {
 
 	cfg := newConfig(opts...)

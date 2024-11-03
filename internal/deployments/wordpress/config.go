@@ -1,8 +1,6 @@
-package mysql
+package wordpress
 
 import (
-	"fmt"
-
 	k8sapp "github.com/kol-ratner/tufin/internal/k8s/app"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -14,6 +12,7 @@ type ConfigOverrides struct {
 	MemoryRequest string
 	CPULimit      string
 	MemoryLimit   string
+	VolumeSize    string
 }
 
 func WithReplicas(replicas int32) Option {
@@ -46,56 +45,51 @@ func WithMemoryLimit(mem string) Option {
 	}
 }
 
+func WithVolumeSize(size string) Option {
+	return func(co *ConfigOverrides) {
+		co.VolumeSize = size
+	}
+}
+
 func newConfig(opts ...Option) *k8sapp.ApplicationConfig {
-	name := "mysql"
+	name := "wordpress"
 
 	cfg := &k8sapp.ApplicationConfig{
 		Name:      name,
 		Namespace: "default",
-		Image:     "mysql:8.0",
+		Image:     "wordpress:6.2.1-apache",
 		Labels: map[string]string{
 			"app":                    name,
 			"app.kubernetes.io/name": name,
 		},
-		ContainerPort: 3306,
+		ContainerPort: 80,
 		Replicas:      1,
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("500m"),
-				corev1.ResourceMemory: resource.MustParse("750Mi"),
+				corev1.ResourceCPU:    resource.MustParse("250m"),
+				corev1.ResourceMemory: resource.MustParse("256Mi"),
 			},
 			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("1"),
-				corev1.ResourceMemory: resource.MustParse("1Gi"),
+				corev1.ResourceCPU:    resource.MustParse("500m"),
+				corev1.ResourceMemory: resource.MustParse("512Mi"),
 			},
 		},
-		PersistentVolumeSize: "5Gi",
+		PersistentVolumeSize: "2Gi",
 		EnvVars: []corev1.EnvVar{
 			{
-				Name: "MYSQL_ROOT_PASSWORD",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: fmt.Sprintf("%s-creds", name),
-						},
-						Key: "password",
-					},
-				},
+				Name:  "WORDPRESS_DB_HOST",
+				Value: "mysql",
 			},
 			{
-				Name:  "MYSQL_DATABASE",
+				Name:  "WORDPRESS_DB_USER",
 				Value: "wordpress",
 			},
 			{
-				Name:  "MYSQL_USER",
-				Value: "wordpress",
-			},
-			{
-				Name: "MYSQL_PASSWORD",
+				Name: "WORDPRESS_DB_PASSWORD",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: fmt.Sprintf("%s-creds", name),
+							Name: "mysql-creds",
 						},
 						Key: "password",
 					},
@@ -104,7 +98,7 @@ func newConfig(opts ...Option) *k8sapp.ApplicationConfig {
 		},
 		Volumes: []corev1.Volume{
 			{
-				Name: fmt.Sprintf("%-storage", name),
+				Name: name,
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: name,
@@ -114,17 +108,13 @@ func newConfig(opts ...Option) *k8sapp.ApplicationConfig {
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      fmt.Sprintf("%-storage", name),
-				MountPath: "/var/lib/mysql",
+				Name:      name,
+				MountPath: "/var/www/html",
 			},
 		},
 		Svc: k8sapp.SvcConfig{
-			Port:             3306,
-			DisableClusterIP: true,
-		},
-		SecretType: "Opaque",
-		SecretData: map[string][]byte{
-			"password": k8sapp.GeneratePassword(25),
+			Port:             80,
+			DisableClusterIP: false,
 		},
 	}
 
@@ -149,6 +139,9 @@ func newConfig(opts ...Option) *k8sapp.ApplicationConfig {
 	}
 	if overrides.MemoryLimit != "" {
 		cfg.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(overrides.MemoryLimit)
+	}
+	if overrides.VolumeSize != "" {
+		cfg.PersistentVolumeSize = overrides.VolumeSize
 	}
 
 	return cfg
