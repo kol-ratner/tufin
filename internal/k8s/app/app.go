@@ -17,20 +17,28 @@ const (
 	PVC
 )
 
+type SvcConfig struct {
+	Port             int32
+	DisableClusterIP bool
+}
+
 type ApplicationConfig struct {
-	Name                 string
-	Labels               map[string]string
-	Namespace            string
-	Image                string
-	SvcPort              int32
-	ContainerPort        int32
-	Replicas             int32
-	Resources            corev1.ResourceRequirements
-	PersistentVolumeSize string
+	Name      string
+	Labels    map[string]string
+	Namespace string
+
+	Image         string
+	ContainerPort int32
+	Replicas      int32
+	Resources     corev1.ResourceRequirements
 
 	Volumes      []corev1.Volume
 	EnvVars      []corev1.EnvVar
 	VolumeMounts []corev1.VolumeMount
+
+	PersistentVolumeSize string
+
+	Svc SvcConfig
 
 	SecretType corev1.SecretType
 	SecretData map[string][]byte

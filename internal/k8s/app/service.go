@@ -21,14 +21,20 @@ func (a *Application) service(ctx context.Context) error {
 			Selector: map[string]string{
 				"app": a.Config.Name,
 			},
+
 			Ports: []corev1.ServicePort{
 				{
 					Name:     a.Config.Name,
 					Protocol: corev1.ProtocolTCP,
-					Port:     a.Config.SvcPort,
+					Port:     a.Config.Svc.Port,
 				},
 			},
 		},
+	}
+
+	// Set ClusterIP to "None" for headless service
+	if a.Config.Svc.DisableClusterIP {
+		svc.Spec.ClusterIP = "None"
 	}
 
 	_, err := svcCli.Create(ctx, svc, metav1.CreateOptions{})
