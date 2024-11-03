@@ -76,32 +76,32 @@ func deployEntrypoint(cmd *cobra.Command, args []string) {
 	}
 
 	// Convert to configs slice
-	var configs []deployments.DeploymentConfig
+	var deploymentConfigs []deployments.DeploymentConfig
 	for component, opts := range componentOpts {
-		configs = append(configs, deployments.DeploymentConfig{
+		deploymentConfigs = append(deploymentConfigs, deployments.DeploymentConfig{
 			Component: component,
 			Options:   opts,
 		})
 	}
 
 	msgs := make(chan string)
-	kubeConfig, err := k8s.GetKubeConfigFromHost("")
-	if err != nil {
-		log.Fatal(err)
-	}
-	msgs <- "found kubeconfig!"
-
-	cli, err := k8s.NewClient(kubeConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// the done channel signals to the main goroutine that the apps.Deploy() function has completed
 	// otherwise our program will continue trying to process messages from the apps.Deploy() function and panic
 	done := make(chan bool)
 
 	go func() {
-		if err := deployments.Ship(msgs, "", cli, configs...); err != nil {
+		kubeConfig, err := k8s.GetKubeConfigFromHost("")
+		if err != nil {
+			log.Fatal(err)
+		}
+		msgs <- "found kubeconfig!"
+
+		cli, err := k8s.NewClient(kubeConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := deployments.Ship(msgs, "", cli, deploymentConfigs...); err != nil {
 			log.Println(err)
 		}
 		done <- true
