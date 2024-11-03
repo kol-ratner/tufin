@@ -6,7 +6,7 @@ package cmd
 import (
 	"log"
 
-	"github.com/kol-ratner/tufin/internal/apps"
+	"github.com/kol-ratner/tufin/internal/deployments"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ func deployEntrypoint(cmd *cobra.Command, args []string) {
 	done := make(chan bool)
 
 	go func() {
-		if err := apps.Deploy(msgs); err != nil {
+		if err := deployments.Ship(msgs); err != nil {
 			log.Println(err)
 		}
 		done <- true
