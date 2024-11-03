@@ -1,16 +1,11 @@
 package reporting
 
 import (
-	"context"
-	"fmt"
 	"os"
 
-	"github.com/kol-ratner/tufin/internal/k8s"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
-
 	"github.com/jedib0t/go-pretty/v6/table"
+
+	"github.com/kol-ratner/tufin/internal/k8s"
 )
 
 func Status(msgChan chan<- string) error {
@@ -20,16 +15,12 @@ func Status(msgChan chan<- string) error {
 		return err
 	}
 
-	stdClientSet, err := k8s.NewClient(kubeConfig)
-	if err != nil {
-		return err
-	}
-	metricsClientSet, err := metrics.NewForConfig(kubeConfig)
+	k8s, err := k8s.NewClient(kubeConfig)
 	if err != nil {
 		return err
 	}
 
-	pods, err := stdClientSet.CoreV1().Pods("default").List(context.Background(), metav1.ListOptions{})
+	pods, err := k8s.Pods("default")
 	if err != nil {
 		return err
 	}
@@ -37,18 +28,11 @@ func Status(msgChan chan<- string) error {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"NAME", "READY", "STATUS", "RESTARTS", "START_TIME", "CPU_USAGE", "MEMORY_USAGE"})
-
 	for _, pod := range pods.Items {
-		cpuReq := pod.Spec.Containers[0].Resources.Requests.Cpu()
-		memoryReq := pod.Spec.Containers[0].Resources.Requests.Memory()
-
-		metrics, err := metricsClientSet.MetricsV1beta1().PodMetricses("default").Get(context.Background(), pod.Name, metav1.GetOptions{})
+		util, err := k8s.CalculateResourceUtilization(pod)
 		if err != nil {
-			continue
+			return err
 		}
-
-		cpuUsage := calcUtil(metrics.Containers[0].Usage.Cpu(), cpuReq)
-		memUsage := calcUtil(metrics.Containers[0].Usage.Memory(), memoryReq)
 
 		t.AppendRow(table.Row{
 			pod.Name,
@@ -56,20 +40,12 @@ func Status(msgChan chan<- string) error {
 			pod.Status.Phase,
 			pod.Status.ContainerStatuses[0].RestartCount,
 			pod.Status.StartTime.String(),
-			cpuUsage,
-			memUsage,
+			util.CPU,
+			util.Memory,
 		})
 		t.AppendSeparator()
 	}
 
 	t.Render()
 	return nil
-}
-
-func calcUtil(usage, request *resource.Quantity) string {
-	if request.IsZero() {
-		return "no resource request configured"
-	}
-	percentage := float64(usage.MilliValue()) / float64(request.MilliValue()) * 100
-	return fmt.Sprintf("%.1f%%", percentage)
 }

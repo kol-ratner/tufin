@@ -34,7 +34,7 @@ func (c *client) PodResources(pod v1.Pod) *resources {
 }
 
 func (c *client) PodMetrics(pod v1.Pod) (*v1beta1.PodMetrics, error) {
-	metrics, err := c.MetricsClientSet.MetricsV1beta1().
+	metrics, err := c.Metrics.MetricsV1beta1().
 		PodMetricses(pod.Namespace).
 		Get(context.Background(), pod.Name, metav1.GetOptions{})
 	if err != nil {
