@@ -25,7 +25,9 @@ func (a *Application) secret(ctx context.Context) error {
 	_, err := scrtCli.Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			scrtCli.Update(ctx, secret, metav1.UpdateOptions{})
+			if _, err := scrtCli.Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
 			return nil
 		}
 		return err

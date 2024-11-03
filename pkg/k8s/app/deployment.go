@@ -56,7 +56,9 @@ func (a *Application) deployment(ctx context.Context) error {
 	_, err := dCli.Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			dCli.Update(ctx, deployment, metav1.UpdateOptions{})
+			if _, err := dCli.Update(ctx, deployment, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
 			return nil
 		}
 		return err
