@@ -8,19 +8,8 @@ import (
 	"github.com/kol-ratner/tufin/pkg/k8s"
 )
 
-func Status(msgChan chan<- string) error {
-	// grabbing the kubeconfig from the hosts default ~/.kube/config file
-	kubeConfig, err := k8s.GetKubeConfigFromHost("")
-	if err != nil {
-		return err
-	}
-
-	k8s, err := k8s.NewClient(kubeConfig)
-	if err != nil {
-		return err
-	}
-
-	pods, err := k8s.Pods("default")
+func Status(msgChan chan<- string, kubeconfigPath string, cli *k8s.Client) error {
+	pods, err := cli.Pods("default")
 	if err != nil {
 		return err
 	}
@@ -29,7 +18,7 @@ func Status(msgChan chan<- string) error {
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"NAME", "READY", "STATUS", "RESTARTS", "START_TIME", "CPU_USAGE", "MEMORY_USAGE"})
 	for _, pod := range pods.Items {
-		util, err := k8s.CalculateResourceUtilization(pod)
+		util, err := cli.CalculateResourceUtilization(pod)
 		if err != nil {
 			return err
 		}
