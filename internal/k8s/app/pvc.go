@@ -20,11 +20,11 @@ func (a *Application) pvc(ctx context.Context) error {
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
+				a.Config.Pvc.AccessMode,
 			},
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(a.Config.PersistentVolumeSize),
+					corev1.ResourceStorage: resource.MustParse(a.Config.Pvc.Size),
 				},
 			},
 		},

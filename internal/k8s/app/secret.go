@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 
 	"golang.org/x/exp/rand"
 	corev1 "k8s.io/api/core/v1"
@@ -15,12 +14,12 @@ func (a *Application) secret(ctx context.Context) error {
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-creds", a.Config.Name),
+			Name:      a.Config.Secret.SecretName,
 			Namespace: a.Config.Namespace,
 			Labels:    a.Config.Labels,
 		},
-		Type: a.Config.SecretType,
-		Data: a.Config.SecretData,
+		Type: a.Config.Secret.SecretType,
+		Data: a.Config.Secret.SecretData,
 	}
 
 	_, err := scrtCli.Create(ctx, secret, metav1.CreateOptions{})

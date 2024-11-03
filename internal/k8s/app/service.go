@@ -18,10 +18,7 @@ func (a *Application) service(ctx context.Context) error {
 			Labels:    a.Config.Labels,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"app": a.Config.Name,
-			},
-
+			Selector: a.Config.Deployment.SelectorMatchLabels,
 			Ports: []corev1.ServicePort{
 				{
 					Name:     a.Config.Name,

@@ -19,11 +19,9 @@ func (a *Application) deployment(ctx context.Context) error {
 			Labels:    a.Config.Labels,
 		},
 		Spec: v1.DeploymentSpec{
-			Replicas: &a.Config.Replicas,
+			Replicas: &a.Config.Deployment.Replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": a.Config.Name,
-				},
+				MatchLabels: a.Config.Deployment.SelectorMatchLabels,
 			},
 			Strategy: v1.DeploymentStrategy{
 				Type: v1.RecreateDeploymentStrategyType,
@@ -36,20 +34,20 @@ func (a *Application) deployment(ctx context.Context) error {
 					Containers: []corev1.Container{
 						{
 							Name:      a.Config.Name,
-							Image:     a.Config.Image,
-							Env:       a.Config.EnvVars,
-							Resources: a.Config.Resources,
+							Image:     a.Config.Deployment.Image,
+							Env:       a.Config.Deployment.EnvVars,
+							Resources: a.Config.Deployment.Resources,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          a.Config.Name,
 									Protocol:      corev1.ProtocolTCP,
-									ContainerPort: a.Config.ContainerPort,
+									ContainerPort: a.Config.Deployment.ContainerPort,
 								},
 							},
-							VolumeMounts: a.Config.VolumeMounts,
+							VolumeMounts: a.Config.Deployment.VolumeMounts,
 						},
 					},
-					Volumes: a.Config.Volumes,
+					Volumes: a.Config.Deployment.Volumes,
 				},
 			},
 		},
