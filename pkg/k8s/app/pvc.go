@@ -33,7 +33,9 @@ func (a *Application) pvc(ctx context.Context) error {
 	_, err := pvcCli.Create(ctx, pvc, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			pvcCli.Update(ctx, pvc, metav1.UpdateOptions{})
+			if _, err := pvcCli.Update(ctx, pvc, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
 			return nil
 		}
 		return err

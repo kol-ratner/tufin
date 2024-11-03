@@ -1,6 +1,5 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2024 Kol Ratner kolratner@gmail.com
 */
 package main
 

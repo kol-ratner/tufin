@@ -37,7 +37,9 @@ func (a *Application) service(ctx context.Context) error {
 	_, err := svcCli.Create(ctx, svc, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			svcCli.Update(ctx, svc, metav1.UpdateOptions{})
+			if _, err := svcCli.Update(ctx, svc, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
 			return nil
 		}
 		return err

@@ -1,14 +1,50 @@
 package deployments_test
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/kol-ratner/tufin/internal/config"
 	"github.com/kol-ratner/tufin/internal/deployments"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestShip(t *testing.T) {
+	// Create a temporary kubeconfig file for testing
+	tmpKubeconfig, err := os.CreateTemp("", "kubeconfig")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpKubeconfig.Name())
+
+	// Write mock kubeconfig content
+	mockConfig := `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://localhost:6443
+  name: test-cluster
+contexts:
+- context:
+    cluster: test-cluster
+    user: test-user
+  name: test-context
+current-context: test-context
+users:
+- name: test-user
+  user:
+    token: test-token`
+
+	if _, err := tmpKubeconfig.Write([]byte(mockConfig)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set KUBECONFIG environment variable
+	os.Setenv("KUBECONFIG", tmpKubeconfig.Name())
+	defer os.Unsetenv("KUBECONFIG")
+
+	// Rest of your test cases remain the same
 	tests := []struct {
 		name      string
 		configs   []deployments.DeploymentConfig
@@ -27,7 +63,6 @@ func TestShip(t *testing.T) {
 				},
 			},
 			wantMsgs: []string{
-				"found kubeconfig!",
 				"successfully triggered wordpress deployment",
 			},
 			wantError: false,
@@ -44,7 +79,6 @@ func TestShip(t *testing.T) {
 				},
 			},
 			wantMsgs: []string{
-				"found kubeconfig!",
 				"successfully triggered mysql deployment",
 			},
 			wantError: false,
@@ -66,7 +100,6 @@ func TestShip(t *testing.T) {
 				},
 			},
 			wantMsgs: []string{
-				"found kubeconfig!",
 				"successfully triggered wordpress deployment",
 				"successfully triggered mysql deployment",
 			},
@@ -77,7 +110,9 @@ func TestShip(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			msgs := make(chan string, len(tt.wantMsgs))
-			err := deployments.Ship(msgs, tt.configs...)
+
+			fakeClientset := fake.NewSimpleClientset()
+			err := deployments.Ship(msgs, tmpKubeconfig.Name(), fakeClientset, tt.configs...)
 
 			if (err != nil) != tt.wantError {
 				t.Errorf("Ship() error = %v, wantError %v", err, tt.wantError)

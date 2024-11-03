@@ -10,8 +10,8 @@ import (
 	"k8s.io/metrics/pkg/apis/metrics/v1beta1"
 )
 
-func (c *client) Pods(namspace string) (*v1.PodList, error) {
-	pods, err := c.ClientSet.CoreV1().Pods("default").List(context.Background(), metav1.ListOptions{})
+func (c *Client) Pods(namspace string) (*v1.PodList, error) {
+	pods, err := c.CoreV1().Pods("default").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ type resources struct {
 	Limits   v1.ResourceList
 }
 
-func (c *client) PodResources(pod v1.Pod) *resources {
+func (c *Client) PodResources(pod v1.Pod) *resources {
 	r := &resources{}
 
 	r.Limits = pod.Spec.Containers[0].Resources.Limits
@@ -33,7 +33,7 @@ func (c *client) PodResources(pod v1.Pod) *resources {
 	return r
 }
 
-func (c *client) PodMetrics(pod v1.Pod) (*v1beta1.PodMetrics, error) {
+func (c *Client) PodMetrics(pod v1.Pod) (*v1beta1.PodMetrics, error) {
 	metrics, err := c.Metrics.MetricsV1beta1().
 		PodMetricses(pod.Namespace).
 		Get(context.Background(), pod.Name, metav1.GetOptions{})
@@ -49,7 +49,7 @@ type podUtilization struct {
 	Memory string
 }
 
-func (c *client) CalculateResourceUtilization(pod v1.Pod) (podUtilization, error) {
+func (c *Client) CalculateResourceUtilization(pod v1.Pod) (podUtilization, error) {
 	cpuReq := c.PodResources(pod).Requests.Cpu()
 	memoryReq := c.PodResources(pod).Requests.Memory()
 

@@ -3,10 +3,11 @@ package app_test
 import (
 	"testing"
 
-	"github.com/kol-ratner/tufin/pkg/k8s/app"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/kol-ratner/tufin/pkg/k8s/app"
 )
 
 func TestApplication_Service(t *testing.T) {

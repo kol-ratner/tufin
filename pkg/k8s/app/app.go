@@ -22,7 +22,7 @@ type Application struct {
 	Resources []KubernetesResource
 }
 
-func NewApplication(client *kubernetes.Clientset, config *ApplicationConfig, resources []KubernetesResource) *Application {
+func NewApplication(client kubernetes.Interface, config *ApplicationConfig, resources []KubernetesResource) *Application {
 	return &Application{
 		Client:    client,
 		Config:    config,
