@@ -8,8 +8,8 @@ import (
 )
 
 type client struct {
-	ClientSet        *kubernetes.Clientset
-	MetricsClientSet *metrics.Clientset
+	ClientSet *kubernetes.Clientset
+	Metrics   *metrics.Clientset
 }
 
 func NewClient(config *rest.Config) (*client, error) {
@@ -25,7 +25,7 @@ func NewClient(config *rest.Config) (*client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client.MetricsClientSet = metricsClientSet
+	client.Metrics = metricsClientSet
 
 	return client, nil
 }
