@@ -1,8 +1,8 @@
-package apps
+package deployments
 
 import (
-	"github.com/kol-ratner/tufin/internal/apps/mysql"
-	"github.com/kol-ratner/tufin/internal/apps/wordpress"
+	"github.com/kol-ratner/tufin/internal/deployments/mysql"
+	"github.com/kol-ratner/tufin/internal/deployments/wordpress"
 	"github.com/kol-ratner/tufin/internal/k8s"
 )
 
@@ -14,21 +14,20 @@ func Deploy(msgChan chan<- string) error {
 	}
 	msgChan <- "found kubeconfig!"
 
-	clientSet, err := k8s.NewClient(kubeConfig)
+	cli, err := k8s.NewClient(kubeConfig)
 	if err != nil {
 		return err
 	}
 
-	mysql := mysql.New(clientSet, &mysql.Options{
-		CPURequest:    "500m",
-		MemoryRequest: "750Mi",
-	})
+	mysqlOpts := &mysql.Options{}
+	mysql := mysql.New(cli.ClientSet, mysqlOpts)
 	if err := mysql.Deploy(); err != nil {
 		return err
 	}
+
 	msgChan <- "succesfully triggered mysql deployment"
 
-	wp := wordpress.New(clientSet, nil)
+	wp := wordpress.New(cli.ClientSet, nil)
 	if err := wp.Deploy(); err != nil {
 		return err
 	}
