@@ -1,6 +1,8 @@
 package deployments
 
 import (
+	"fmt"
+
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kol-ratner/tufin/internal/config"
@@ -49,6 +51,8 @@ func Ship(msgChan chan<- string, configs ...DeploymentConfig) error {
 				return err
 			}
 			msgChan <- "successfully triggered wordpress deployment"
+		default:
+			return fmt.Errorf("unsupported component: %s", cfg.Component)
 		}
 	}
 	return nil
