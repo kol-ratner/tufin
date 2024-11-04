@@ -15,7 +15,7 @@ type DeploymentConfig struct {
 	Options   []config.Option
 }
 
-func Ship(msgChan chan<- string, kubeconfigPath string, cli kubernetes.Interface, configs ...DeploymentConfig) error {
+func Ship(msgChan chan<- string, cli kubernetes.Interface, configs ...DeploymentConfig) error {
 
 	// If no configs provided, deploy everything with defaults
 	if len(configs) == 0 {

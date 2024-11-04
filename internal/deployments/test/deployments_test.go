@@ -112,7 +112,7 @@ users:
 			msgs := make(chan string, len(tt.wantMsgs))
 
 			fakeClientset := fake.NewSimpleClientset()
-			err := deployments.Ship(msgs, tmpKubeconfig.Name(), fakeClientset, tt.configs...)
+			err := deployments.Ship(msgs, fakeClientset, tt.configs...)
 
 			if (err != nil) != tt.wantError {
 				t.Errorf("Ship() error = %v, wantError %v", err, tt.wantError)

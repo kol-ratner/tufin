@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/kol-ratner/tufin/internal/reporting"
-	"github.com/kol-ratner/tufin/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -41,18 +40,8 @@ func statusEntrypoint(cmd *cobra.Command, args []string) {
 	done := make(chan bool)
 
 	go func() {
-		// grabbing the kubeconfig from the hosts default ~/.kube/config file
-		kubeConfig, err := k8s.GetKubeConfigFromHost("")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		cli, err := k8s.NewClient(kubeConfig)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := reporting.Status(msgs, "", cli); err != nil {
+		// FYI the k8sClient is initialized in the rootCmd.PersistentPreRun function
+		if err := reporting.Status(msgs, k8sClient); err != nil {
 			log.Println(err)
 		}
 		done <- true
