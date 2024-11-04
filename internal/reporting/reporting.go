@@ -8,7 +8,7 @@ import (
 	"github.com/kol-ratner/tufin/pkg/k8s"
 )
 
-func Status(msgChan chan<- string, kubeconfigPath string, cli *k8s.Client) error {
+func Status(msgChan chan<- string, cli *k8s.Client) error {
 	pods, err := cli.Pods("default")
 	if err != nil {
 		return err
