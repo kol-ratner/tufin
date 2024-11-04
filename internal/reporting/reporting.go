@@ -18,9 +18,12 @@ func Status(msgChan chan<- string, kubeconfigPath string, cli *k8s.Client) error
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"NAME", "READY", "STATUS", "RESTARTS", "START_TIME", "CPU_USAGE", "MEMORY_USAGE"})
 	for _, pod := range pods.Items {
-		util, err := cli.CalculateResourceUtilization(pod)
-		if err != nil {
-			return err
+		var cpuUsage, memoryUsage string
+		if pod.Status.Phase == "Running" {
+			if util, err := cli.CalculateResourceUtilization(pod); err == nil {
+				cpuUsage = util.CPU
+				memoryUsage = util.Memory
+			}
 		}
 
 		t.AppendRow(table.Row{
@@ -29,8 +32,8 @@ func Status(msgChan chan<- string, kubeconfigPath string, cli *k8s.Client) error
 			pod.Status.Phase,
 			pod.Status.ContainerStatuses[0].RestartCount,
 			pod.Status.StartTime.String(),
-			util.CPU,
-			util.Memory,
+			cpuUsage,
+			memoryUsage,
 		})
 		t.AppendSeparator()
 	}
