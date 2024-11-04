@@ -27,9 +27,6 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(clusterCmd)
-
-	// clusterCmd.Flags().IntP("nodes", "n", 0, "Specify how many nodes you want to create")
-	// clusterCmd.Flags().String("name", "default", "Specify a name for the cluster you want to create")
 }
 
 func clusterEntrypoint(cmd *cobra.Command, args []string) {
